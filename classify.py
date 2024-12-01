@@ -24,7 +24,8 @@ def download_model(url, file_path):
 
 # URL of the model file
 
-model_url = "https://www.dropbox.com/scl/fi/td4xwg0q5592ia52nbji8/vgg16_model.h5?rlkey=gqmcyrnqi1asz5p3q6xsc0yub&st=2ev0otau&dl=1"
+model_url = "https://www.dropbox.com/scl/fi/e6kbgxdfg3r3egu30ixr3/vgg16_model.h5?rlkey=v66gz6s3ihe089t5k3sfkq36t&st=ppvznwf4&dl=1"
+
 model_path = "vgg16_model.h5"
 
 # Ensure the model is downloaded and loaded
