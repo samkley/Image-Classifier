@@ -23,7 +23,8 @@ def download_model(url, file_path):
             raise
 
 # URL of the model file
-model_url = "https://drive.google.com/uc?export=download&id=1SiPgOoUM0Nm6UX-XMmO7JKbih7ULrJUP"
+
+model_url = "https://www.dropbox.com/scl/fi/td4xwg0q5592ia52nbji8/vgg16_model.h5?rlkey=gqmcyrnqi1asz5p3q6xsc0yub&st=2ev0otau&dl=1"
 model_path = "vgg16_model.h5"
 
 # Ensure the model is downloaded and loaded
