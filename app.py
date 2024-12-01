@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify
-from classify import classify_image  # Make sure this function is defined in classify.py
+from classify import classify_image
 import os
 
 app = Flask(__name__)
@@ -7,8 +7,6 @@ app = Flask(__name__)
 # Set upload folder and allowed extensions
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-
-# Configure Flask to use the upload folder
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Helper function to check allowed file extensions
@@ -17,34 +15,35 @@ def allowed_file(filename):
 
 @app.route('/')
 def home():
-    return render_template('index.html')  # Ensure index.html exists in the templates folder
+    return render_template('index.html')  # Ensure this file exists in 'templates'
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
-    # Check if the post request has the file part
     if 'file' not in request.files:
         return jsonify({"error": "No file part"}), 400
+
     file = request.files['file']
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
-    
+
     if file and allowed_file(file.filename):
-        # Save the file to the upload folder
+        # Save file to the upload folder
         filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
         file.save(filename)
-        
-        # Classify the image
-        class_name, probability = classify_image(filename)
-        
-        # Return the results
-        return jsonify({
-            'class_name': class_name,
-            'probability': probability,
-            'image_url': filename
-        })
+
+        try:
+            # Classify the image
+            class_name, probability = classify_image(filename)
+            return jsonify({
+                'class_name': class_name,
+                'probability': probability,
+                'image_url': f"/{filename}"
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     return jsonify({"error": "File type not allowed"}), 400
 
 if __name__ == '__main__':
-    # Ensure Flask uses the correct host and port on Render
-    port = int(os.environ.get("PORT", 5000))  # Render provides the PORT env variable
-    app.run(host="0.0.0.0", port=port, debug=True)  # Listen on all available IP addresses
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
