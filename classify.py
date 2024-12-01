@@ -1,10 +1,10 @@
+import os
+import requests
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.vgg16 import preprocess_input, decode_predictions
 import numpy as np
 from PIL import Image
-import os
-import requests
 
 # Function to download the model from a URL
 def download_model(url, file_path):
@@ -22,39 +22,49 @@ def download_model(url, file_path):
             print(f"Failed to download the model: {e}")
             raise
 
-# URL of the model file
-model_url = "https://www.dropbox.com/scl/fi/spqqrrjezpvphbir1pq30/vgg16_model.keras?rlkey=8s9tx6ske2rn67oyzs6kzijys&st=4lrcj0fg&dl=1"
-model_path = "vgg16_model.keras"
+# URL of the model file (the one you provided)
+model_url = "https://www.dropbox.com/scl/fi/et7cap9fc4sb8tl8ykl1d/vgg16_model.h5?rlkey=h1qnvnu9rjenkox1c4tcaqrek&st=e3mqkxl7&dl=1"
+model_path = "vgg16_model.h5"
 
 # Ensure the model is downloaded and loaded
 download_model(model_url, model_path)
-model = load_model(model_path)
+
+# Load the model with error handling
+try:
+    model = load_model(model_path)
+    print("Model loaded successfully.")
+except Exception as e:
+    print(f"Failed to load the model: {e}")
+    raise
 
 def classify_image(img_path):
-    # Load the image with PIL
-    img = Image.open(img_path)
-    
-    # Convert RGBA to RGB if the image has an alpha channel (transparency)
-    if img.mode == 'RGBA':
-        img = img.convert('RGB')
-    
-    # Resize the image to the model's expected input shape (224x224 for VGG16)
-    img = img.resize((224, 224))  # VGG16 expects 224x224 images
+    try:
+        # Load the image with PIL
+        img = Image.open(img_path)
+        
+        # Convert RGBA to RGB if the image has an alpha channel (transparency)
+        if img.mode == 'RGBA':
+            img = img.convert('RGB')
+        
+        # Resize the image to the model's expected input shape (224x224 for VGG16)
+        img = img.resize((224, 224))  # VGG16 expects 224x224 images
 
-    # Convert the image to a numpy array
-    img_array = np.array(img)
+        # Convert the image to a numpy array
+        img_array = np.array(img)
 
-    # Normalize the image for VGG16
-    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
-    img_array = preprocess_input(img_array)  # Preprocess the image for VGG16
+        # Normalize the image for VGG16
+        img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+        img_array = preprocess_input(img_array)  # Preprocess the image for VGG16
 
-    # Make a prediction
-    prediction = model.predict(img_array)
+        # Make a prediction
+        prediction = model.predict(img_array)
 
-    # Decode the predictions to get human-readable class labels
-    decoded_predictions = decode_predictions(prediction, top=1)[0]  # Get top prediction
-    class_name = decoded_predictions[0][1]  # Class name
-    probability = float(decoded_predictions[0][2])  # Convert to a standard float
+        # Decode the predictions to get human-readable class labels
+        decoded_predictions = decode_predictions(prediction, top=1)[0]  # Get top prediction
+        class_name = decoded_predictions[0][1]  # Class name
+        probability = float(decoded_predictions[0][2])  # Convert to a standard float
 
-    return class_name, probability
-
+        return class_name, probability
+    except Exception as e:
+        print(f"Error during image classification: {e}")
+        return None, None
