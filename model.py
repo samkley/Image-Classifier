@@ -1,9 +1,11 @@
 from tensorflow.keras.applications import VGG16
+from tensorflow.keras.models import save_model
 
-# Load a pre-trained VGG16 model from Keras with ImageNet weights
+# Load a pre-trained VGG16 model with ImageNet weights
 model = VGG16(weights='imagenet')
 
-# Optionally, save it as an .h5 file for later use
-model.save('vgg16_model.h5')
+# Save the model in both Keras and H5 formats
+model.save('vgg16_model.keras', save_format='keras')  # Native Keras format (recommended)
+model.save('vgg16_model.h5')  # H5 format for compatibility
 
-print("Pre-trained VGG16 model saved as 'vgg16_model.h5'")
+print("Models saved as 'vgg16_model.keras' and 'vgg16_model.h5'")
