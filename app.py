@@ -47,4 +47,4 @@ def upload_image():
 if __name__ == '__main__':
     # Ensure Flask uses the correct host and port on Render
     port = int(os.environ.get("PORT", 5000))  # Render provides the PORT env variable
-    app.run(host=
+    app.run(host="0.0.0.0", port=port, debug=True)  # Listen on all available IP addresses
