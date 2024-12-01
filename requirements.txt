@@ -1,5 +1,6 @@
 tensorflow==2.13.0
-keras==2.13.0
+keras>=2.9.0,<2.10.0
+
 pillow
 flask
 gunicorn
