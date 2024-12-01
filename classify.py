@@ -23,8 +23,8 @@ def download_model(url, file_path):
             raise
 
 # URL of the model file
-model_url = "https://www.dropbox.com/scl/fi/e6kbgxdfg3r3egu30ixr3/vgg16_model.h5?rlkey=v66gz6s3ihe089t5k3sfkq36t&st=ppvznwf4&dl=1"
-model_path = "vgg16_model.h5"
+model_url = "https://www.dropbox.com/scl/fi/spqqrrjezpvphbir1pq30/vgg16_model.keras?rlkey=8s9tx6ske2rn67oyzs6kzijys&st=4lrcj0fg&dl=1"
+model_path = "vgg16_model.keras"
 
 # Ensure the model is downloaded and loaded
 download_model(model_url, model_path)
