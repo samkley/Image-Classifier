@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify
-from classify import classify_image
+from classify import classify_image  # Make sure this function is defined in classify.py
 import os
 
 app = Flask(__name__)
@@ -17,7 +17,7 @@ def allowed_file(filename):
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('index.html')  # Ensure index.html exists in the templates folder
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
@@ -47,4 +47,4 @@ def upload_image():
 if __name__ == '__main__':
     # Ensure Flask uses the correct host and port on Render
     port = int(os.environ.get("PORT", 5000))  # Render provides the PORT env variable
-    app.run(host="0.0.0.0", port=port, debug=True)  # Listen on all available IP addresses
+    app.run(host=
