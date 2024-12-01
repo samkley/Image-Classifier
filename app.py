@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from classify import classify_image
 import os
 
@@ -29,6 +29,7 @@ def upload_image():
     if file and allowed_file(file.filename):
         # Save file to the upload folder
         filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)  # Create folder if it doesn't exist
         file.save(filename)
 
         try:
@@ -37,13 +38,17 @@ def upload_image():
             return jsonify({
                 'class_name': class_name,
                 'probability': probability,
-                'image_url': f"/{filename}"
+                'image_url': f"/{UPLOAD_FOLDER}/{file.filename}"
             })
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
     return jsonify({"error": "File type not allowed"}), 400
 
+@app.route('/static/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=True)
