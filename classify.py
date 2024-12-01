@@ -9,16 +9,21 @@ import requests
 # Function to download the model from a URL
 def download_model(url, file_path):
     if not os.path.exists(file_path):
-        print(f"Downloading model from {url}...")
-        response = requests.get(url, stream=True)
-        with open(file_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
-        print("Model download complete.")
+        try:
+            print(f"Downloading model from {url}...")
+            response = requests.get(url, stream=True)
+            response.raise_for_status()  # Raise HTTPError for bad responses
+            with open(file_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            print("Model download complete.")
+        except requests.RequestException as e:
+            print(f"Failed to download the model: {e}")
+            raise
 
-# URL of the model file (replace this with your actual URL)
-model_url = "https://drive.google.com/file/d/1SiPgOoUM0Nm6UX-XMmO7JKbih7ULrJUP/view?usp=share_link"
+# URL of the model file
+model_url = "https://drive.google.com/uc?export=download&id=1SiPgOoUM0Nm6UX-XMmO7JKbih7ULrJUP"
 model_path = "vgg16_model.h5"
 
 # Ensure the model is downloaded and loaded
@@ -51,4 +56,4 @@ def classify_image(img_path):
     class_name = decoded_predictions[0][1]  # Class name
     probability = float(decoded_predictions[0][2])  # Convert to a standard float
 
-    return class_name, 
+    return class_name, probability
