@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from tensorflow.keras.models import load_model
 from tensorflow.keras import backend as K
 import tensorflow as tf
+from google.cloud import storage
 from classify import classify_image
 
 # Set environment variable to disable GPU (for non-GPU environments)
@@ -17,31 +18,37 @@ UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Dropbox direct download link for the Keras model
-MODEL_URL = 'https://www.dropbox.com/scl/fi/7b01rybaqxoqghuos3i5y/vgg16_model.keras?rlkey=7c8l93edlhpzqwfl078980bcn&st=o7yo2azk&dl=1'
+# GCS model path
+GCS_BUCKET_NAME = 'imageclassifier'
+GCS_MODEL_PATH = 'gs://imageclassifier/vgg16_model.keras'
 
-# Path to save the model
+# Path to save the model locally
 MODEL_PATH = 'vgg16_model.keras'
 
 # Helper function to check allowed file extensions
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Function to download the model if it doesn't exist
-def download_model():
+# Function to download the model from GCS if it doesn't exist locally
+def download_model_from_gcs():
     if not os.path.exists(MODEL_PATH):
-        print(f"Downloading model from {MODEL_URL}...")
+        print(f"Downloading model from GCS...")
+
         try:
-            response = requests.get(MODEL_URL, timeout=60)
-            response.raise_for_status()  # This will raise an exception for 4xx/5xx errors
-            with open(MODEL_PATH, 'wb') as f:
-                f.write(response.content)
+            # Set up the GCS client
+            client = storage.Client()
+            bucket = client.get_bucket(GCS_BUCKET_NAME)
+
+            # Download the model file from GCS to local storage
+            blob = bucket.blob(GCS_MODEL_PATH)
+            blob.download_to_filename(MODEL_PATH)
+
             print("Model downloaded successfully.")
-        except requests.exceptions.RequestException as e:
-            print(f"Error downloading model: {e}")
+        except Exception as e:
+            print(f"Error downloading model from GCS: {e}")
 
 # Load the model when the application starts
-download_model()
+download_model_from_gcs()
 model = load_model(MODEL_PATH)
 
 @app.route('/')
