@@ -4,3 +4,4 @@ numpy<2
 h5py
 google-cloud-storage
 Flask
+Pillow
