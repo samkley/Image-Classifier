@@ -1,3 +1,5 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from classify import classify_image
 import os
@@ -35,11 +37,16 @@ def upload_image():
         try:
             # Classify the image
             class_name, probability = classify_image(filename)
+            if class_name is None:
+                return jsonify({"error": "Error during image classification"}), 500
+
+            # Return the result to be displayed on the same page
             return jsonify({
                 'class_name': class_name,
                 'probability': probability,
                 'image_url': f"/{UPLOAD_FOLDER}/{file.filename}"
             })
+
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -49,6 +56,21 @@ def upload_image():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+@app.route('/feedback', methods=['POST'])
+def feedback():
+    data = request.get_json()
+    feedback = data.get('feedback')
+    class_name = data.get('class_name')
+    probability = data.get('probability')
+    image_path = data.get('image_path')
+
+    # Handle the feedback logic here (store it, analyze it, etc.)
+    print(f"Feedback received: {feedback}")
+    print(f"Class: {class_name}, Probability: {probability}, Image: {image_path}")
+
+    return jsonify({"success": True})
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=True)
+
