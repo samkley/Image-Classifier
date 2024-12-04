@@ -1,6 +1,4 @@
-pillow
+tensorflow==2.10.0
+numpy<2
+h5py
 flask
-gunicorn
-tensorflow==2.14.0
-numpy<2.0.0
-
