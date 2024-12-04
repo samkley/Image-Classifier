@@ -2,10 +2,13 @@ import os
 import requests
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from tensorflow.keras.models import load_model
+from tensorflow.keras import backend as K
+import tensorflow as tf
 from classify import classify_image
 
 # Set environment variable to disable GPU (for non-GPU environments)
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+tf.config.set_visible_devices([], 'GPU')  # Ensure no GPU is used
 
 app = Flask(__name__)
 
@@ -28,15 +31,14 @@ def allowed_file(filename):
 def download_model():
     if not os.path.exists(MODEL_PATH):
         print(f"Downloading model from {MODEL_URL}...")
-        response = requests.get(MODEL_URL)
-        
-        # Check if the download was successful
-        if response.status_code == 200:
+        try:
+            response = requests.get(MODEL_URL, timeout=60)
+            response.raise_for_status()  # This will raise an exception for 4xx/5xx errors
             with open(MODEL_PATH, 'wb') as f:
                 f.write(response.content)
             print("Model downloaded successfully.")
-        else:
-            print(f"Failed to download model. Status code: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            print(f"Error downloading model: {e}")
 
 # Load the model when the application starts
 download_model()
@@ -76,6 +78,8 @@ def upload_image():
 
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+        finally:
+            K.clear_session()  # Clear the session after classification to free memory
 
     return jsonify({"error": "File type not allowed"}), 400
 
