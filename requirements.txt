@@ -1,4 +1,4 @@
-tensorflow==2.14.0
+tensorflow==2.18.0
 numpy<2
 h5py
 flask
