@@ -2,3 +2,4 @@ keras==3.7.0
 tensorflow==2.18.0
 numpy<2
 h5py
+google-cloud-storage
