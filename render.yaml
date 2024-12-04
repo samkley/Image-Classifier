@@ -1,4 +1,5 @@
 runtime: python
 pythonVersion: "3.10"
 buildCommand: "pip install -r requirements.txt"
-startCommand: "python app.py"
+
+startCommand: "python --version && pip list && python app.py"
