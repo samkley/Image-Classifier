@@ -3,3 +3,4 @@ tensorflow==2.18.0
 numpy<2
 h5py
 google-cloud-storage
+Flask
