@@ -1,5 +1,4 @@
 from tensorflow.keras.applications import VGG16
-from tensorflow.keras.models import save_model
 
 # Load a pre-trained VGG16 model with ImageNet weights
 model = VGG16(weights='imagenet')
