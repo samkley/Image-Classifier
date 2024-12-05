@@ -10,9 +10,9 @@ from google.oauth2 import service_account
 import base64
 
 # Disable GPU and force CPU usage
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Explicitly disable GPU
 import tensorflow as tf
-tf.config.set_visible_devices([], "GPU")
+tf.config.set_visible_devices([], 'GPU')  # Hide GPU from TensorFlow
 
 # Verify no GPUs are being used
 print("TensorFlow devices:", tf.config.list_physical_devices("GPU"))  # Should print an empty list
@@ -82,10 +82,14 @@ def classify_image_with_endpoint(image_path):
     if response.status_code == 200:
         predictions = response.json()
         # Adjust according to the prediction response structure
-        return predictions["predictions"][0].get("class_name"), predictions["predictions"][0].get("probability")
+        predicted_class = predictions["predictions"][0].get("class_name")
+        probability = predictions["predictions"][0].get("probability")
+        if predicted_class is not None and probability is not None:
+            return predicted_class, probability
+        else:
+            raise Exception("Class name or probability missing in the prediction response.")
     else:
         raise Exception(f"Prediction request failed: {response.text}")
-
 
 @app.route('/')
 def home():
