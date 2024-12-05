@@ -1,6 +1,8 @@
 import os
 import json
 import requests
+import numpy as np
+from PIL import Image
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
@@ -42,27 +44,41 @@ def get_access_token():
     credentials.refresh(Request())
     return credentials.token
 
+# Function to preprocess the image
+def preprocess_image(image_path):
+    img = Image.open(image_path).convert("RGB")  # Ensure it's in RGB format
+    img = img.resize((224, 224))  # Resize to 224x224
+    img_array = np.array(img) / 255.0  # Normalize to [0, 1]
+    img_array = img_array.astype(np.float32)  # Ensure it's float32
+    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+    return img_array
+
 # Function to send an image to the AI Platform endpoint for classification
 def classify_image_with_endpoint(image_path):
-    with open(image_path, "rb") as image_file:
-        image_content = image_file.read()
-        instances = [{"image_bytes": {"b64": image_content.decode('latin1')}}]
+    # Preprocess the image
+    preprocessed_image = preprocess_image(image_path)
+    
+    # Use the access token for authentication
+    access_token = get_access_token()
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    
+    # Prepare the payload for prediction
+    payload = {
+        "instances": [{"input_layer": preprocessed_image.tolist()}]
+    }
 
-        access_token = get_access_token()
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json",
-        }
+    # Send the request to the AI Platform endpoint
+    response = requests.post(ENDPOINT_URL, json=payload, headers=headers)
 
-        payload = {"instances": instances}
-
-        response = requests.post(ENDPOINT_URL, json=payload, headers=headers)
-        if response.status_code == 200:
-            predictions = response.json()
-            # Adjust according to the prediction response structure
-            return predictions["predictions"][0].get("class_name"), predictions["predictions"][0].get("probability")
-        else:
-            raise Exception(f"Prediction request failed: {response.text}")
+    if response.status_code == 200:
+        predictions = response.json()
+        # Assuming the response contains probabilities and class names
+        return predictions["predictions"][0].get("class_name"), predictions["predictions"][0].get("probability")
+    else:
+        raise Exception(f"Prediction request failed: {response.text}")
 
 @app.route('/')
 def home():
