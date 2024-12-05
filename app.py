@@ -1,13 +1,12 @@
 import os
+import json
 import requests
 from flask import Flask, render_template, request, jsonify, send_from_directory
-from tensorflow.keras import backend as K  # Clear backend memory
-import tensorflow as tf
+from google.auth.transport.requests import Request
+from google.oauth2 import service_account
+from classify import classify_image
 
-# Disable GPU
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Explicitly disable GPU
-tf.config.set_visible_devices([], "GPU")  # Ensure TensorFlow doesn't use GPU
-
+# Flask app setup
 app = Flask(__name__)
 
 # Set upload folder and allowed extensions
@@ -22,26 +21,43 @@ ENDPOINT_URL = "https://us-central1-aiplatform.googleapis.com/v1/projects/630534
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# Function to get an access token using a service account
+def get_access_token():
+    # Load the service account JSON from the environment variable
+    credentials_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+    if not credentials_json:
+        raise Exception("Service account credentials not found in environment variables.")
+    
+    # Parse the JSON and create credentials
+    credentials_dict = json.loads(credentials_json)
+    credentials = service_account.Credentials.from_service_account_info(
+        credentials_dict,
+        scopes=["https://www.googleapis.com/auth/cloud-platform"],
+    )
+    credentials.refresh(Request())
+    return credentials.token
+
 # Function to send an image to the AI Platform endpoint for classification
 def classify_image_with_endpoint(image_path):
     with open(image_path, "rb") as image_file:
+        # Prepare payload
         image_content = image_file.read()
+        instances = [{"image_bytes": {"b64": image_content.decode('latin1')}, "key": "value"}]  # Adjust instance format if needed
 
-        # Prepare the request payload
-        instances = [{"image_bytes": {"b64": image_content.decode('latin1')}, "key": "value"}]
+        # Get the access token
+        access_token = get_access_token()
 
-        # Get the Google Cloud access token
-        access_token = os.popen("gcloud auth print-access-token").read().strip()
-
-        # Set headers and payload for the request
+        # Set headers and authorization
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
         }
 
-        payload = {"instances": instances}
+        payload = {
+            "instances": instances
+        }
 
-        # Send request to AI Platform endpoint
+        # Send request to endpoint
         response = requests.post(ENDPOINT_URL, json=payload, headers=headers)
         if response.status_code == 200:
             predictions = response.json()
@@ -51,7 +67,7 @@ def classify_image_with_endpoint(image_path):
 
 @app.route('/')
 def home():
-    return render_template('index.html')  # Ensure 'index.html' exists in 'templates'
+    return render_template('index.html')  # Ensure this file exists in 'templates'
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
@@ -63,13 +79,19 @@ def upload_image():
         return jsonify({"error": "No selected file"}), 400
 
     if file and allowed_file(file.filename):
-        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)  # Ensure folder exists
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        file.save(file_path)
+        # Save file to the upload folder
+        filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        file.save(filename)
 
         try:
-            # Classify the image via AI Platform endpoint
-            class_name, probability = classify_image_with_endpoint(file_path)
+            print("Classifying image...")
+            # Classify the image using the AI Platform endpoint
+            class_name, probability = classify_image_with_endpoint(filename)
+            print(f"Classification result: {class_name}, {probability}")
+
+            if class_name is None:
+                return jsonify({"error": "Error during image classification"}), 500
 
             return jsonify({
                 'class_name': class_name,
@@ -78,9 +100,8 @@ def upload_image():
             })
 
         except Exception as e:
+            print(f"Error during classification: {e}")
             return jsonify({"error": str(e)}), 500
-        finally:
-            K.clear_session()  # Clear the session after classification
 
     return jsonify({"error": "File type not allowed"}), 400
 
@@ -96,7 +117,7 @@ def feedback():
     probability = data.get('probability')
     image_path = data.get('image_path')
 
-    # Handle feedback (e.g., store in a database or log it)
+    # Handle the feedback logic here (store it, analyze it, etc.)
     print(f"Feedback received: {feedback}")
     print(f"Class: {class_name}, Probability: {probability}, Image: {image_path}")
 
