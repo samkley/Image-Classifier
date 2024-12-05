@@ -57,31 +57,14 @@ def preprocess_image(image_path):
 
 def classify_image_with_endpoint(image_path):
     try:
-        # Preprocess image to float type numpy array
+        # Preprocess image to get a float32 numpy array
         img_array = preprocess_image(image_path)
 
-        # Compress the image to reduce its size
-        with open(image_path, "rb") as image_file:
-            image = Image.open(image_file)
-            image = image.resize((224, 224))  # Resize to the model's expected input size
+        # Flatten the array and send it as a list of floats
+        img_array = img_array.flatten().tolist()  # Convert the array to a list of floats
 
-            # Compress the image to JPEG with a lower quality
-            buffer = io.BytesIO()
-            image.save(buffer, format="JPEG", quality=85)  # Set quality to 85 to reduce size
-            image_content = buffer.getvalue()
-
-        # Check the size of the image content
-        print(f"Image content size: {len(image_content)} bytes")
-        
-        # Ensure the size is within the API limits
-        if len(image_content) > 1.5 * 1024 * 1024:  # 1.5 MB
-            raise Exception("Image size exceeds the API size limit (1.5 MB)")
-
-        # Encode the image as base64
-        image_b64 = base64.b64encode(image_content).decode("utf-8")
-        
-        # Prepare the instances array with the base64-encoded image
-        instances = [{"input_layer": image_b64}]
+        # Prepare the instances array with the flattened float data
+        instances = [{"input_layer": img_array}]
         
         # Print the instances for debugging purposes
         print("Instances payload:", instances)
@@ -113,6 +96,7 @@ def classify_image_with_endpoint(image_path):
     except Exception as e:
         print(f"Error during prediction: {str(e)}")
         raise e
+
 
 @app.route('/')
 def home():
