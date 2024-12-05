@@ -19,7 +19,11 @@ UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-ENDPOINT_URL = "https://us-central1-aiplatform.googleapis.com/v1/projects/630534982182/locations/us-central1/endpoints/830994395598684160:predict"
+# Updated AI Platform Endpoint Details
+ENDPOINT_URL = (
+    "https://us-central1-aiplatform.googleapis.com/v1/projects/630534982182/"
+    "locations/us-central1/endpoints/8938599624772419584:predict"
+)
 
 # Helper function to check allowed file extensions
 def allowed_file(filename):
@@ -42,7 +46,7 @@ def get_access_token():
 def classify_image_with_endpoint(image_path):
     with open(image_path, "rb") as image_file:
         image_content = image_file.read()
-        instances = [{"image_bytes": {"b64": image_content.decode('latin1')}, "key": "value"}]
+        instances = [{"image_bytes": {"b64": image_content.decode('latin1')}}]
 
         access_token = get_access_token()
         headers = {
@@ -55,7 +59,8 @@ def classify_image_with_endpoint(image_path):
         response = requests.post(ENDPOINT_URL, json=payload, headers=headers)
         if response.status_code == 200:
             predictions = response.json()
-            return predictions["predictions"][0]["class_name"], predictions["predictions"][0]["probability"]
+            # Adjust according to the prediction response structure
+            return predictions["predictions"][0].get("class_name"), predictions["predictions"][0].get("probability")
         else:
             raise Exception(f"Prediction request failed: {response.text}")
 
@@ -79,6 +84,9 @@ def upload_image():
 
         try:
             class_name, probability = classify_image_with_endpoint(filename)
+            if class_name is None or probability is None:
+                return jsonify({"error": "Prediction failed: No response from model"}), 500
+
             return jsonify({
                 'class_name': class_name,
                 'probability': probability,
