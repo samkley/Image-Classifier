@@ -8,6 +8,7 @@ from PIL import Image
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
+import base64
 
 # Disable GPU and force CPU usage
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
