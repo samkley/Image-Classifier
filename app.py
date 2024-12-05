@@ -1,4 +1,5 @@
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import requests
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from tensorflow.keras.models import load_model
