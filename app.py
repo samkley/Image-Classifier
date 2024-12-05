@@ -1,5 +1,7 @@
 import os
 import json
+from PIL import Image
+import io
 import requests
 import numpy as np
 from PIL import Image
@@ -53,32 +55,37 @@ def preprocess_image(image_path):
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     return img_array
 
-# Function to send an image to the AI Platform endpoint for classification
+
 def classify_image_with_endpoint(image_path):
-    # Preprocess the image
-    preprocessed_image = preprocess_image(image_path)
-    
-    # Use the access token for authentication
+    # Open the image and resize it
+    with open(image_path, "rb") as image_file:
+        image = Image.open(image_file)
+        # Resize the image to a smaller size (e.g., 224x224 or similar)
+        image = image.resize((224, 224))  # You can adjust the size as needed
+        buffer = io.BytesIO()
+        image.save(buffer, format="JPEG")  # Save as JPEG to reduce size
+        image_content = buffer.getvalue()
+
+    # Encode image in Base64
+    image_b64 = base64.b64encode(image_content).decode("utf-8")
+    instances = [{"input_layer": {"b64": image_b64}}]
+
     access_token = get_access_token()
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",
     }
-    
-    # Prepare the payload for prediction
-    payload = {
-        "instances": [{"input_layer": preprocessed_image.tolist()}]
-    }
 
-    # Send the request to the AI Platform endpoint
+    payload = {"instances": instances}
+
     response = requests.post(ENDPOINT_URL, json=payload, headers=headers)
-
     if response.status_code == 200:
         predictions = response.json()
-        # Assuming the response contains probabilities and class names
+        # Adjust according to the prediction response structure
         return predictions["predictions"][0].get("class_name"), predictions["predictions"][0].get("probability")
     else:
         raise Exception(f"Prediction request failed: {response.text}")
+
 
 @app.route('/')
 def home():
