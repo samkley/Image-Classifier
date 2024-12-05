@@ -66,30 +66,34 @@ def classify_image_with_endpoint(image_path):
         image.save(buffer, format="JPEG")  # Save as JPEG to reduce size
         image_content = buffer.getvalue()
 
-    # Encode image in Base64
+    # Encode image in Base64 (ensure it's properly encoded as a string)
     image_b64 = base64.b64encode(image_content).decode("utf-8")
-    instances = [{"input_layer": {"b64": image_b64}}]
+    
+    # Proper payload structure with Base64-encoded image
+    instances = [{"input_layer": image_b64}]  # Make sure the key matches your model's expected input
 
+    # Get access token
     access_token = get_access_token()
+    
+    # Set headers for authorization
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",
     }
 
+    # Payload for the request
     payload = {"instances": instances}
 
+    # Send the POST request to the AI Platform
     response = requests.post(ENDPOINT_URL, json=payload, headers=headers)
+    
     if response.status_code == 200:
         predictions = response.json()
         # Adjust according to the prediction response structure
-        predicted_class = predictions["predictions"][0].get("class_name")
-        probability = predictions["predictions"][0].get("probability")
-        if predicted_class is not None and probability is not None:
-            return predicted_class, probability
-        else:
-            raise Exception("Class name or probability missing in the prediction response.")
+        return predictions["predictions"][0].get("class_name"), predictions["predictions"][0].get("probability")
     else:
         raise Exception(f"Prediction request failed: {response.text}")
+
 
 @app.route('/')
 def home():
