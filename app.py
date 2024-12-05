@@ -7,6 +7,7 @@ import numpy as np
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
+import base64
 
 # Disable GPU and force CPU usage
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Explicitly disable GPU
@@ -21,7 +22,6 @@ app = Flask(__name__)
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 1.5 * 1024 * 1024  # 1.5MB limit
 
 # Updated AI Platform Endpoint Details
 ENDPOINT_URL = (
@@ -57,33 +57,51 @@ def preprocess_image(image_path):
 
 # Function to classify the image using the AI Platform endpoint
 def classify_image_with_endpoint(image_path):
-    # Open the image and resize it
-    img_array = preprocess_image(image_path)
+    try:
+        # Open the image and resize it
+        with open(image_path, "rb") as image_file:
+            image = Image.open(image_file)
+            # Resize the image to 224x224
+            image = image.resize((224, 224))
+            buffer = io.BytesIO()
+            image.save(buffer, format="JPEG")  # Save as JPEG to reduce size
+            image_content = buffer.getvalue()
 
-    # Prepare the payload for the prediction
-    instances = [{"input_layer": img_array.tolist()}]  # Ensure the key matches your model's expected input
+        # Encode image in Base64 (ensure it's properly encoded as a string)
+        image_b64 = base64.b64encode(image_content).decode("utf-8")
+        
+        # Proper payload structure with Base64-encoded image
+        instances = [{"input_layer": image_b64}]  # Make sure the key matches your model's expected input
 
-    # Get access token
-    access_token = get_access_token()
-    
-    # Set headers for authorization
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json",
-    }
+        # Get access token
+        access_token = get_access_token()
+        
+        # Set headers for authorization
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
 
-    # Payload for the request
-    payload = {"instances": instances}
+        # Payload for the request
+        payload = {"instances": instances}
 
-    # Send the POST request to the AI Platform
-    response = requests.post(ENDPOINT_URL, json=payload, headers=headers)
-    
-    if response.status_code == 200:
-        predictions = response.json()
-        # Adjust according to the prediction response structure
-        return predictions["predictions"][0].get("class_name"), predictions["predictions"][0].get("probability")
-    else:
-        raise Exception(f"Prediction request failed: {response.text}")
+        # Send the POST request to the AI Platform
+        response = requests.post(ENDPOINT_URL, json=payload, headers=headers)
+        print(f"Response Status Code: {response.status_code}")
+        
+        # Check if the response is successful
+        if response.status_code == 200:
+            predictions = response.json()
+            print(f"Response JSON: {json.dumps(predictions, indent=2)}")
+            # Adjust according to the prediction response structure
+            return predictions["predictions"][0].get("class_name"), predictions["predictions"][0].get("probability")
+        else:
+            print(f"Prediction request failed. Response: {response.text}")
+            raise Exception(f"Prediction request failed: {response.text}")
+
+    except Exception as e:
+        print(f"Error during prediction: {str(e)}")
+        raise e
 
 @app.route('/')
 def home():
@@ -104,7 +122,6 @@ def upload_image():
         file.save(filename)
 
         try:
-            # Classify the image with the AI platform
             class_name, probability = classify_image_with_endpoint(filename)
             if class_name is None or probability is None:
                 return jsonify({"error": "Prediction failed: No response from model"}), 500
@@ -124,6 +141,8 @@ def upload_image():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+# Run the Flask app
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=True)
+
