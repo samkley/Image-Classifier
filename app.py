@@ -55,53 +55,53 @@ def preprocess_image(image_path):
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     return img_array
 
-# Function to classify the image using the AI Platform endpoint
 def classify_image_with_endpoint(image_path):
     try:
-        # Open the image and resize it
+        # Open the image and resize it to 224x224
         with open(image_path, "rb") as image_file:
             image = Image.open(image_file)
-            # Resize the image to 224x224
-            image = image.resize((224, 224))
+            image = image.resize((224, 224))  # Resize to the model's expected input size
             buffer = io.BytesIO()
             image.save(buffer, format="JPEG")  # Save as JPEG to reduce size
             image_content = buffer.getvalue()
 
-        # Encode image in Base64 (ensure it's properly encoded as a string)
+        # Encode the image as base64
         image_b64 = base64.b64encode(image_content).decode("utf-8")
         
-        # Proper payload structure with Base64-encoded image
-        instances = [{"input_layer": image_b64}]  # Make sure the key matches your model's expected input
-
-        # Get access token
+        # Prepare the instances array with the base64-encoded image
+        instances = [{"input_layer": image_b64}]
+        
+        # Print the instances for debugging purposes
+        print("Instances payload:", instances)
+        
+        # Get the access token
         access_token = get_access_token()
         
-        # Set headers for authorization
+        # Set the headers for the API request
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
         }
 
-        # Payload for the request
+        # Prepare the request payload
         payload = {"instances": instances}
 
-        # Send the POST request to the AI Platform
+        # Send the POST request to the AI Platform endpoint
         response = requests.post(ENDPOINT_URL, json=payload, headers=headers)
-        print(f"Response Status Code: {response.status_code}")
         
-        # Check if the response is successful
+        # Check for successful response
         if response.status_code == 200:
             predictions = response.json()
-            print(f"Response JSON: {json.dumps(predictions, indent=2)}")
-            # Adjust according to the prediction response structure
-            return predictions["predictions"][0].get("class_name"), predictions["predictions"][0].get("probability")
+            print("Prediction response:", predictions)  # Debugging response
+            return predictions["predictions"][0].get("output_0"), predictions["predictions"][0].get("probability")
         else:
-            print(f"Prediction request failed. Response: {response.text}")
+            print("Error response:", response.text)
             raise Exception(f"Prediction request failed: {response.text}")
-
+    
     except Exception as e:
         print(f"Error during prediction: {str(e)}")
         raise e
+
 
 @app.route('/')
 def home():
@@ -145,4 +145,4 @@ def uploaded_file(filename):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=True)
-
+k
