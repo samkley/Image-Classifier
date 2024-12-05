@@ -2,14 +2,11 @@ import os
 import requests
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from tensorflow.keras.models import load_model
-from tensorflow.keras import backend as K
+from tensorflow.keras import backend as K  # Add this line
 import tensorflow as tf
 from google.cloud import storage
 from classify import classify_image
 
-# Set environment variable to disable GPU (for non-GPU environments)
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-tf.config.set_visible_devices([], 'GPU')  # Ensure no GPU is used
 
 app = Flask(__name__)
 
@@ -18,38 +15,40 @@ UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# GCS model path
-GCS_BUCKET_NAME = 'imageclassifier'
-GCS_MODEL_PATH = 'gs://imageclassifier/vgg16_model.keras'
-
-# Path to save the model locally
-MODEL_PATH = 'vgg16_model.keras'
+# AI Platform Endpoint Details
+ENDPOINT_URL = "https://us-central1-aiplatform.googleapis.com/v1/projects/630534982182/locations/us-central1/endpoints/830994395598684160:predict"
 
 # Helper function to check allowed file extensions
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Function to download the model from GCS if it doesn't exist locally
-def download_model_from_gcs():
-    if not os.path.exists(MODEL_PATH):
-        print(f"Downloading model from GCS...")
+# Function to send an image to the AI Platform endpoint for classification
+def classify_image_with_endpoint(image_path):
+    with open(image_path, "rb") as image_file:
+        # Prepare payload
+        image_content = image_file.read()
+        instances = [{"image_bytes": {"b64": image_content.decode('latin1')}, "key": "value"}]  # Adjust instance format if needed
 
-        try:
-            # Set up the GCS client
-            client = storage.Client()
-            bucket = client.get_bucket(GCS_BUCKET_NAME)
+        # Get the authorization token
+        access_token = os.popen('gcloud auth print-access-token').read().strip()
 
-            # Download the model file from GCS to local storage
-            blob = bucket.blob(GCS_MODEL_PATH)
-            blob.download_to_filename(MODEL_PATH)
+        # Set headers and authorization (alternative formatting)
+        headers = {
+            "Authorization": "Bearer {}".format(access_token),
+            "Content-Type": "application/json",
+        }
 
-            print("Model downloaded successfully.")
-        except Exception as e:
-            print(f"Error downloading model from GCS: {e}")
+        payload = {
+            "instances": instances
+        }
 
-# Load the model when the application starts
-download_model_from_gcs()
-model = load_model(MODEL_PATH)
+        # Send request to endpoint
+        response = requests.post(ENDPOINT_URL, json=payload, headers=headers)
+        if response.status_code == 200:
+            predictions = response.json()
+            return predictions["predictions"][0]["class_name"], predictions["predictions"][0]["probability"]
+        else:
+            raise Exception(f"Prediction request failed: {response.text}")
 
 @app.route('/')
 def home():
@@ -67,16 +66,18 @@ def upload_image():
     if file and allowed_file(file.filename):
         # Save file to the upload folder
         filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)  # Create folder if it doesn't exist
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         file.save(filename)
 
         try:
+            print("Classifying image...")
             # Classify the image using the downloaded model
             class_name, probability = classify_image(filename)
+            print(f"Classification result: {class_name}, {probability}")
+
             if class_name is None:
                 return jsonify({"error": "Error during image classification"}), 500
 
-            # Return the result to be displayed on the same page
             return jsonify({
                 'class_name': class_name,
                 'probability': probability,
@@ -84,11 +85,13 @@ def upload_image():
             })
 
         except Exception as e:
+            print(f"Error during classification: {e}")
             return jsonify({"error": str(e)}), 500
         finally:
             K.clear_session()  # Clear the session after classification to free memory
 
     return jsonify({"error": "File type not allowed"}), 400
+
 
 @app.route('/static/uploads/<filename>')
 def uploaded_file(filename):
