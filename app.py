@@ -6,7 +6,10 @@ from google.auth.transport.requests import Request
 from google.oauth2 import service_account
 from classify import classify_image
 
-# Flask app setup
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  
+tf.config.set_visible_devices([], "GPU")  
+
+
 app = Flask(__name__)
 
 # Set upload folder and allowed extensions
