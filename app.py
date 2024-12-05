@@ -4,7 +4,6 @@ from PIL import Image
 import io
 import requests
 import numpy as np
-from PIL import Image
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
@@ -56,13 +55,13 @@ def preprocess_image(image_path):
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     return img_array
 
-
+# Function to classify the image using the AI Platform endpoint
 def classify_image_with_endpoint(image_path):
     # Open the image and resize it
     with open(image_path, "rb") as image_file:
         image = Image.open(image_file)
-        # Resize the image to a smaller size (e.g., 224x224 or similar)
-        image = image.resize((224, 224))  # You can adjust the size as needed
+        # Resize the image to 224x224
+        image = image.resize((224, 224))
         buffer = io.BytesIO()
         image.save(buffer, format="JPEG")  # Save as JPEG to reduce size
         image_content = buffer.getvalue()
