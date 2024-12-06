@@ -55,13 +55,13 @@ def preprocess_image(image_path):
     # Convert the image to RGB (OpenCV uses BGR by default)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     
-    # Normalize the image (optional depending on model requirements)
+    # Normalize the image
     img_array = np.array(img_rgb) / 255.0  # Normalize the pixel values between 0 and 1
     
     # Add batch dimension (making it [1, height, width, channels])
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     
-    # Convert to float32 (optional depending on model requirements)
+    # Convert to float32
     img_array = img_array.astype(np.float32)
 
     return img_array
@@ -71,26 +71,21 @@ def classify_image_with_endpoint(image_path):
     try:
         # Preprocess the image
         img_array = preprocess_image(image_path)
-        print("Image array shape:", img_array.shape)
+        print("Image array shape:", img_array.shape)  # Ensure it's (1, 128, 128, 3)
         
         # Prepare the payload
-        instances = [{"input_layer": img_array.tolist()}]
-        payload = {"instances": instances}
-
-        # Log the size of the payload data
-        json_payload = json.dumps(payload)
-        print(f"Raw JSON payload size: {len(json_payload.encode('utf-8')) / 1024:.2f} KB")
+        payload = {"instances": [{"input_layer": img_array.tolist()}]}  # Use the correct tensor name
 
         # Get the access token
         access_token = get_access_token()
 
-        # Set headers (no gzip compression)
+        # Set headers
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
         }
 
-        # Send the POST request (without gzip)
+        # Send the POST request
         response = requests.post(ENDPOINT_URL, json=payload, headers=headers)
 
         # Handle response
@@ -148,4 +143,3 @@ def uploaded_file(filename):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=True)
-
