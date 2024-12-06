@@ -45,7 +45,6 @@ def get_access_token():
     credentials.refresh(Request())
     return credentials.token
 
-# Preprocess the image into a float32 array and compress it efficiently using OpenCV
 def preprocess_image(image_path):
     # Open the image using OpenCV (grayscale will be avoided)
     img = cv2.imread(image_path)
@@ -56,17 +55,16 @@ def preprocess_image(image_path):
     # Convert the image to RGB (OpenCV uses BGR by default)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     
-    # Save to a BytesIO object with JPEG compression
-    img_byte_arr = io.BytesIO()
-    pil_img = Image.fromarray(img_rgb)
-    pil_img.save(img_byte_arr, format='JPEG', quality=85)  # JPEG compression at quality 85
-    img_byte_arr = img_byte_arr.getvalue()
-
-    # Convert the image to a numpy array, normalize, and add a batch dimension
-    img_array = np.array(Image.open(io.BytesIO(img_byte_arr))) / 255.0
-    img_array = img_array.astype(np.float32)
-    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+    # Normalize the image (optional depending on model requirements)
+    img_array = np.array(img_rgb) / 255.0  # Normalize the pixel values between 0 and 1
     
+    # Ensure the shape is [1, height, width, channels] and not [1, 1, height, width, channels]
+    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+    img_array = np.squeeze(img_array, axis=1)  # Remove any extra singleton dimensions (e.g., [1, 1, 128, 128, 3])
+    
+    # Convert to float32 (optional depending on model requirements)
+    img_array = img_array.astype(np.float32)
+
     return img_array
 
 # Classify the image using the endpoint
@@ -151,3 +149,4 @@ def uploaded_file(filename):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=True)
+
