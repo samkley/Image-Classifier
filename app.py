@@ -46,25 +46,27 @@ def get_access_token():
     return credentials.token
 
 def preprocess_image(image_path):
-    # Open the image using OpenCV (grayscale will be avoided)
+    # Open the image using OpenCV
     img = cv2.imread(image_path)
     
-    # Resize the image to reduce resolution (keeping the aspect ratio)
-    img = cv2.resize(img, (128, 128))  # Resize to 128x128 pixels (or adjust as needed)
+    # Resize the image to 128x128 pixels
+    img = cv2.resize(img, (128, 128))
     
     # Convert the image to RGB (OpenCV uses BGR by default)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     
-    # Normalize the image
-    img_array = np.array(img_rgb) / 255.0  # Normalize the pixel values between 0 and 1
+    # Normalize the image (pixel values between 0 and 1)
+    img_array = np.array(img_rgb) / 255.0  # Shape: (128, 128, 3)
     
     # Add batch dimension (making it [1, height, width, channels])
-    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+    img_array = np.expand_dims(img_array, axis=0)  # Shape: (1, 128, 128, 3)
     
     # Convert to float32
     img_array = img_array.astype(np.float32)
-
+    
+    print(f"Preprocessed image shape: {img_array.shape}")
     return img_array
+
 
 # Classify the image using the endpoint
 def classify_image_with_endpoint(image_path):
@@ -143,3 +145,5 @@ def uploaded_file(filename):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=True)
+
+
