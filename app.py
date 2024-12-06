@@ -59,7 +59,7 @@ def classify_image_with_endpoint(image_path):
         # Preprocess the image
         img_array = preprocess_image(image_path)
         print("Image array shape:", img_array.shape)
-        
+
         # Prepare the payload
         instances = [{"input_layer": img_array.tolist()}]
         payload = {"instances": instances}
@@ -81,6 +81,10 @@ def classify_image_with_endpoint(image_path):
 
         # Send the POST request
         response = requests.post(ENDPOINT_URL, data=compressed_payload, headers=headers)
+
+        # Debugging: Print the response status and content
+        print("Response Status Code:", response.status_code)
+        print("Response Text:", response.text)
 
         # Handle response
         if response.status_code == 200:
