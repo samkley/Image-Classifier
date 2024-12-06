@@ -46,7 +46,7 @@ def get_access_token():
     credentials.refresh(Request())
     return credentials.token
 
-# Preprocess the image into a float32 array and compress it efficiently using OpenCV
+# Preprocess the image into a float16 array and compress it efficiently using OpenCV
 def preprocess_image(image_path):
     # Open the image using OpenCV (grayscale will be avoided)
     img = cv2.imread(image_path)
@@ -65,10 +65,11 @@ def preprocess_image(image_path):
 
     # Convert the image to a numpy array, normalize, and add a batch dimension
     img_array = np.array(Image.open(io.BytesIO(img_byte_arr))) / 255.0
-    img_array = img_array.astype(np.float32)
+    img_array = img_array.astype(np.float16)  # Convert to float16
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     
     return img_array
+
 
 # Classify the image using the endpoint
 def classify_image_with_endpoint(image_path):
@@ -154,3 +155,4 @@ def uploaded_file(filename):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=True)
+
