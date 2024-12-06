@@ -1,6 +1,7 @@
 import os
 import json
 from PIL import Image
+import cv2  # OpenCV for image resizing
 import gzip
 import requests
 import numpy as np
@@ -45,17 +46,21 @@ def get_access_token():
     credentials.refresh(Request())
     return credentials.token
 
-# Preprocess the image into a float32 array and compress it efficiently
+# Preprocess the image into a float32 array and compress it efficiently using OpenCV
 def preprocess_image(image_path):
-    # Open the image and convert it to RGB (removes transparency)
-    img = Image.open(image_path).convert("RGB")
+    # Open the image using OpenCV (grayscale will be avoided)
+    img = cv2.imread(image_path)
     
-    # Resize to match VGG16 input size (224x224)
-    img = img.resize((224, 224))
+    # Resize the image to slightly reduce resolution (keeping the aspect ratio)
+    img = cv2.resize(img, (224, 224))  # Resize to 224x224 pixels (or adjust as needed)
+    
+    # Convert the image to RGB (OpenCV uses BGR by default)
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     
     # Save to a BytesIO object with JPEG compression
     img_byte_arr = io.BytesIO()
-    img.save(img_byte_arr, format='JPEG', quality=85)  # JPEG compression at quality 85
+    pil_img = Image.fromarray(img_rgb)
+    pil_img.save(img_byte_arr, format='JPEG', quality=85)  # JPEG compression at quality 85
     img_byte_arr = img_byte_arr.getvalue()
 
     # Convert the image to a numpy array, normalize, and add a batch dimension
