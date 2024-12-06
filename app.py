@@ -2,7 +2,6 @@ import os
 import json
 from PIL import Image
 import cv2  # OpenCV for image resizing
-import gzip
 import requests
 import numpy as np
 from flask import Flask, render_template, request, jsonify, send_from_directory
@@ -46,13 +45,13 @@ def get_access_token():
     credentials.refresh(Request())
     return credentials.token
 
-# Preprocess the image into a float16 array and compress it efficiently using OpenCV
+# Preprocess the image into a float32 array and compress it efficiently using OpenCV
 def preprocess_image(image_path):
     # Open the image using OpenCV (grayscale will be avoided)
     img = cv2.imread(image_path)
     
-    # Resize the image to slightly reduce resolution (keeping the aspect ratio)
-    img = cv2.resize(img, (224, 224))  # Resize to 224x224 pixels (or adjust as needed)
+    # Resize the image to reduce resolution (keeping the aspect ratio)
+    img = cv2.resize(img, (128, 128))  # Resize to 128x128 pixels (or adjust as needed)
     
     # Convert the image to RGB (OpenCV uses BGR by default)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -65,11 +64,10 @@ def preprocess_image(image_path):
 
     # Convert the image to a numpy array, normalize, and add a batch dimension
     img_array = np.array(Image.open(io.BytesIO(img_byte_arr))) / 255.0
-    img_array = img_array.astype(np.float16)  # Convert to float16
+    img_array = img_array.astype(np.float32)
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     
     return img_array
-
 
 # Classify the image using the endpoint
 def classify_image_with_endpoint(image_path):
@@ -81,24 +79,22 @@ def classify_image_with_endpoint(image_path):
         # Prepare the payload
         instances = [{"input_layer": img_array.tolist()}]
         payload = {"instances": instances}
-        json_payload = json.dumps(payload)
 
-        # Compress the payload using gzip
-        compressed_payload = gzip.compress(json_payload.encode('utf-8'))
-        print(f"Compressed payload size: {len(compressed_payload) / 1024:.2f} KB")
+        # Log the size of the payload data
+        json_payload = json.dumps(payload)
+        print(f"Raw JSON payload size: {len(json_payload.encode('utf-8')) / 1024:.2f} KB")
 
         # Get the access token
         access_token = get_access_token()
 
-        # Set headers (gzip compression)
+        # Set headers (no gzip compression)
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
-            "Content-Encoding": "gzip",  # Notify the server about compression
         }
 
-        # Send the POST request
-        response = requests.post(ENDPOINT_URL, data=compressed_payload, headers=headers)
+        # Send the POST request (without gzip)
+        response = requests.post(ENDPOINT_URL, json=payload, headers=headers)
 
         # Handle response
         if response.status_code == 200:
@@ -155,4 +151,3 @@ def uploaded_file(filename):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=True)
-
