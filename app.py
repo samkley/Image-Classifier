@@ -7,6 +7,7 @@ import numpy as np
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
+import io
 
 # Disable GPU and force CPU usage
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -44,13 +45,24 @@ def get_access_token():
     credentials.refresh(Request())
     return credentials.token
 
-# Preprocess the image into a float32 array
+# Preprocess the image into a float32 array and compress it efficiently
 def preprocess_image(image_path):
+    # Open the image and convert it to RGB (removes transparency)
     img = Image.open(image_path).convert("RGB")
-    img = img.resize((224, 224))  # Resize to match VGG16 input
-    img_array = np.array(img) / 255.0  # Normalize to [0, 1]
-    img_array = img_array.astype(np.float32)  # Ensure dtype is float32
+    
+    # Resize to match VGG16 input size (224x224)
+    img = img.resize((224, 224))
+    
+    # Save to a BytesIO object with JPEG compression
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, format='JPEG', quality=85)  # JPEG compression at quality 85
+    img_byte_arr = img_byte_arr.getvalue()
+
+    # Convert the image to a numpy array, normalize, and add a batch dimension
+    img_array = np.array(Image.open(io.BytesIO(img_byte_arr))) / 255.0
+    img_array = img_array.astype(np.float32)
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+    
     return img_array
 
 # Classify the image using the endpoint
@@ -59,7 +71,7 @@ def classify_image_with_endpoint(image_path):
         # Preprocess the image
         img_array = preprocess_image(image_path)
         print("Image array shape:", img_array.shape)
-
+        
         # Prepare the payload
         instances = [{"input_layer": img_array.tolist()}]
         payload = {"instances": instances}
@@ -81,10 +93,6 @@ def classify_image_with_endpoint(image_path):
 
         # Send the POST request
         response = requests.post(ENDPOINT_URL, data=compressed_payload, headers=headers)
-
-        # Debugging: Print the response status and content
-        print("Response Status Code:", response.status_code)
-        print("Response Text:", response.text)
 
         # Handle response
         if response.status_code == 200:
