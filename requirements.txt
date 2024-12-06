@@ -7,3 +7,4 @@ Flask
 Pillow
 google-auth==2.24.0
 requests==2.31.0
+opencv-python-headless
