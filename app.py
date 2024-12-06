@@ -73,10 +73,10 @@ def classify_image_with_endpoint(image_path):
     try:
         # Preprocess the image
         img_array = preprocess_image(image_path)
-        print("Image array shape:", img_array.shape)  # Ensure it's (1, 128, 128, 3)
+        print("Image array shape before sending:", img_array.shape)  # Should be (1, 128, 128, 3)
         
         # Prepare the payload
-        payload = {"instances": [{"input_layer": img_array.tolist()}]}  # Use the correct tensor name
+        payload = {"instances": [{"input_layer": img_array.tolist()}]}  # Correct input tensor name
 
         # Get the access token
         access_token = get_access_token()
@@ -102,6 +102,7 @@ def classify_image_with_endpoint(image_path):
     except Exception as e:
         print(f"Error during prediction: {str(e)}")
         raise e
+
 
 @app.route('/')
 def home():
