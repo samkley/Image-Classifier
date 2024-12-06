@@ -8,6 +8,8 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
 import base64
+import gzip
+import json
 
 # Disable GPU and force CPU usage
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Explicitly disable GPU
@@ -55,39 +57,39 @@ def preprocess_image(image_path):
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     return img_array
 
+
+
 def classify_image_with_endpoint(image_path):
     try:
         # Preprocess image to get a float32 numpy array
         img_array = preprocess_image(image_path)
 
-        # Flatten the array and send it as a list of floats
-        img_array = img_array.flatten().tolist()  # Convert the array to a list of floats
+        # Flatten the array and compress it
+        instances = [{"input_layer": img_array.tolist()}]
+        
+        # Serialize the data to JSON
+        payload = {"instances": instances}
+        json_payload = json.dumps(payload)
 
-        # Prepare the instances array with the flattened float data
-        instances = [{"input_layer": img_array}]
-        
-        # Print the instances for debugging purposes
-        print("Instances payload:", instances)
-        
+        # Compress the JSON payload with gzip
+        compressed_payload = gzip.compress(json_payload.encode('utf-8'))
+
         # Get the access token
         access_token = get_access_token()
-        
-        # Set the headers for the API request
+
+        # Set headers (include gzip encoding)
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
+            "Content-Encoding": "gzip",  # Notify server about gzip compression
         }
 
-        # Prepare the request payload
-        payload = {"instances": instances}
-
         # Send the POST request to the AI Platform endpoint
-        response = requests.post(ENDPOINT_URL, json=payload, headers=headers)
-        
+        response = requests.post(ENDPOINT_URL, data=compressed_payload, headers=headers)
+
         # Check for successful response
         if response.status_code == 200:
             predictions = response.json()
-            print("Prediction response:", predictions)  # Debugging response
             return predictions["predictions"][0].get("output_0"), predictions["predictions"][0].get("probability")
         else:
             print("Error response:", response.text)
@@ -96,7 +98,6 @@ def classify_image_with_endpoint(image_path):
     except Exception as e:
         print(f"Error during prediction: {str(e)}")
         raise e
-
 
 @app.route('/')
 def home():
@@ -140,4 +141,6 @@ def uploaded_file(filename):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=True)
+
+
 
