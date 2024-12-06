@@ -58,9 +58,8 @@ def preprocess_image(image_path):
     # Normalize the image (optional depending on model requirements)
     img_array = np.array(img_rgb) / 255.0  # Normalize the pixel values between 0 and 1
     
-    # Ensure the shape is [1, height, width, channels] and not [1, 1, height, width, channels]
+    # Add batch dimension (making it [1, height, width, channels])
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
-    img_array = np.squeeze(img_array, axis=1)  # Remove any extra singleton dimensions (e.g., [1, 1, 128, 128, 3])
     
     # Convert to float32 (optional depending on model requirements)
     img_array = img_array.astype(np.float32)
