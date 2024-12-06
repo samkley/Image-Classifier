@@ -1,13 +1,11 @@
 import os
 import json
-from PIL import Image
-import cv2  # OpenCV for image resizing
+import cv2  # OpenCV for image processing
 import requests
 import numpy as np
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
-import io
 
 # Disable GPU and force CPU usage
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -46,37 +44,37 @@ def get_access_token():
     return credentials.token
 
 def preprocess_image(image_path):
-    # Open the image using OpenCV
+    """
+    Preprocess the image for the model.
+    Ensures the shape is [1, 128, 128, 3].
+    """
+    # Load the image using OpenCV
     img = cv2.imread(image_path)
     
-    # Resize the image to 128x128 pixels
+    # Resize the image to the model's expected dimensions (128x128)
     img = cv2.resize(img, (128, 128))
     
-    # Convert the image to RGB (OpenCV uses BGR by default)
+    # Convert BGR (OpenCV default) to RGB
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     
-    # Normalize the image (pixel values between 0 and 1)
-    img_array = np.array(img_rgb) / 255.0  # Shape: (128, 128, 3)
+    # Normalize pixel values to range [0, 1]
+    img_array = np.array(img_rgb, dtype=np.float32) / 255.0
     
-    # Add batch dimension (making it [1, height, width, channels])
-    img_array = np.expand_dims(img_array, axis=0)  # Shape: (1, 128, 128, 3)
-    
-    # Convert to float32
-    img_array = img_array.astype(np.float32)
+    # Add a batch dimension (required by the model)
+    img_array = np.expand_dims(img_array, axis=0)  # Shape becomes [1, 128, 128, 3]
     
     print(f"Preprocessed image shape: {img_array.shape}")
     return img_array
-
 
 # Classify the image using the endpoint
 def classify_image_with_endpoint(image_path):
     try:
         # Preprocess the image
-        img_array = preprocess_image(image_path)
-        print("Image array shape before sending:", img_array.shape)  # Should be (1, 128, 128, 3)
+        img_array = preprocess_image(image_path)  # Shape: [1, 128, 128, 3]
+        print("Image array shape before sending:", img_array.shape)
         
         # Prepare the payload
-        payload = {"instances": [{"input_layer": img_array.tolist()}]}  # Correct input tensor name
+        payload = {"instances": [{"input_layer": img_array.tolist()}]}  # Use correct tensor name
 
         # Get the access token
         access_token = get_access_token()
@@ -102,7 +100,6 @@ def classify_image_with_endpoint(image_path):
     except Exception as e:
         print(f"Error during prediction: {str(e)}")
         raise e
-
 
 @app.route('/')
 def home():
@@ -146,5 +143,3 @@ def uploaded_file(filename):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=True)
-
-
