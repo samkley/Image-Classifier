@@ -1,18 +1,17 @@
 import os
 import json
-from PIL import Image
+import numpy as np
+import tensorflow as tf
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import cv2  # OpenCV for image resizing
 import requests
-import numpy as np
-from flask import Flask, render_template, request, jsonify, send_from_directory
-from google.auth.transport.requests import Request
-from google.oauth2 import service_account
 
-# Disable GPU and force CPU usage
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-import tensorflow as tf
-tf.config.set_visible_devices([], 'GPU')
-print("TensorFlow devices:", tf.config.list_physical_devices("GPU"))  # Should print an empty list
+# Load the corrected class labels from the JSON file
+with open('corrected_imagenet_class_index.json', 'r') as f:
+    class_labels = json.load(f)
+
+# Load your model
+model = tf.keras.models.load_model('mobilenet_model.keras')
 
 app = Flask(__name__)
 
@@ -20,30 +19,11 @@ UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Endpoint details
-ENDPOINT_URL = (
-    "https://us-central1-aiplatform.googleapis.com/v1/projects/630534982182/"
-    "locations/us-central1/endpoints/8938599624772419584:predict"
-)
-
 # Check allowed file extensions
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Get an access token using a service account
-def get_access_token():
-    credentials_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
-    if not credentials_json:
-        raise Exception("Service account credentials not found in environment variables.")
-    credentials_dict = json.loads(credentials_json)
-    credentials = service_account.Credentials.from_service_account_info(
-        credentials_dict,
-        scopes=["https://www.googleapis.com/auth/cloud-platform"],
-    )
-    credentials.refresh(Request())
-    return credentials.token
-
-# Preprocess image for the model
+# Preprocess the image for the model
 def preprocess_image(image_path):
     # Load the image using OpenCV
     img = cv2.imread(image_path)
@@ -63,49 +43,25 @@ def preprocess_image(image_path):
     # Ensure data type is float32
     img_array = img_array.astype(np.float32)
 
-    print(f"Preprocessed image shape: {img_array.shape}")
     return img_array
 
-# Classify the image using the endpoint
-def classify_image_with_endpoint(image_path):
-    try:
-        # Preprocess the image
-        img_array = preprocess_image(image_path)
-        print(f"Preprocessed image shape before sending: {img_array.shape}")
+# Classify the image and map the prediction
+def classify_image(image_path):
+    img_array = preprocess_image(image_path)
 
-        # Create the payload
-        payload = {
-            "instances": [{"input_layer": img_array.tolist()}]
-        }
+    # Predict the class
+    predictions = model.predict(img_array)
 
-        # Log payload size
-        json_payload = json.dumps(payload)
-        print(f"Payload size: {len(json_payload.encode('utf-8')) / 1024:.2f} KB")
+    # Get the class index (the index of the highest prediction)
+    class_index = np.argmax(predictions, axis=1)[0]
 
-        # Get access token
-        access_token = get_access_token()
+    # Get the class name from the corrected class labels
+    class_name = class_labels[str(class_index)]
 
-        # Set headers
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json",
-        }
+    # Get the probability of the prediction and convert it to a native Python float
+    probability = float(np.max(predictions))
 
-        # Send the POST request
-        response = requests.post(ENDPOINT_URL, json=payload, headers=headers)
-
-        # Handle response
-        if response.status_code == 200:
-            predictions = response.json()
-            print("Prediction response:", predictions)
-            return predictions["predictions"][0].get("output_0"), predictions["predictions"][0].get("probability")
-        else:
-            print("Error response:", response.text)
-            raise Exception(f"Prediction request failed: {response.text}")
-
-    except Exception as e:
-        print(f"Error during prediction: {str(e)}")
-        raise e
+    return class_name, probability
 
 @app.route('/')
 def home():
@@ -126,10 +82,7 @@ def upload_image():
         file.save(filename)
 
         try:
-            class_name, probability = classify_image_with_endpoint(filename)
-            if class_name is None or probability is None:
-                return jsonify({"error": "Prediction failed: No response from model"}), 500
-
+            class_name, probability = classify_image(filename)
             return jsonify({
                 'class_name': class_name,
                 'probability': probability,
