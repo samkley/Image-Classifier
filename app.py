@@ -1,4 +1,10 @@
 import os
+
+if __name__ == '__main__':
+    port = os.environ.get("PORT")
+    print(f"Render expects the app to listen on port: {port}")
+    app.run(host="0.0.0.0", port=int(port), debug=True)
+
 import json
 import numpy as np
 import tensorflow as tf
