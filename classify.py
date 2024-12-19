@@ -6,8 +6,7 @@ from tensorflow.keras.applications.mobilenet import preprocess_input, decode_pre
 import numpy as np
 from PIL import Image
 
-# Load the MobileNet model (Assuming it's uploaded to Cloud Storage)
-model_path = "gs://your-bucket/mobilenet_model.pb"  # Update this to your Cloud Storage path
+
 
 # Load the model with TensorFlow
 def load_model_from_gcs(model_path):
