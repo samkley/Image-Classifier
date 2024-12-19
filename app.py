@@ -5,6 +5,9 @@ import tensorflow as tf
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import cv2  # OpenCV for image resizing
 
+port = int(os.environ.get("PORT", 10000))  # Default to 10000 if PORT is not set
+
+
 # Load the corrected class labels from the JSON file
 with open('corrected_imagenet_class_index.json', 'r') as f:
     class_labels = json.load(f)
