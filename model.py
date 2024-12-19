@@ -1,11 +1,11 @@
 import tensorflow as tf
 
-# Load the smaller pre-trained model
+# Load the MobileNetV2 model
 model = tf.keras.applications.MobileNetV2(
-    input_shape=(224, 224, 3),  # Same input shape as before
-    include_top=True,          # Include the classification head
-    weights="imagenet"         # Use pre-trained weights
+    input_shape=(224, 224, 3),
+    include_top=True,
+    weights="imagenet"
 )
 
-# Save the model to a directory
-model.save("mobilenet_model")
+# Save the model in HDF5 format
+model.save("mobilenet_model.h5")  # Specify the `.h5` extension
