@@ -97,8 +97,8 @@ def upload_image():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# Run the Flask app
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5001))  # Render typically sets PORT as an environment variable
-    print(f"Render expects the app to listen on port: {port}")
+    port = int(os.environ.get("PORT", 5001))  # default to 5001 if no PORT is set
+    print(f"Flask app will run on port {port}")
     app.run(host="0.0.0.0", port=port, debug=True)
+
