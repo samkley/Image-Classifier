@@ -7,5 +7,5 @@ model = tf.keras.applications.MobileNetV2(
     weights="imagenet"
 )
 
-# Save the model in HDF5 format
-model.save("mobilenet_model.h5")  # Specify the `.h5` extension
+
+model.save("mobilenet_model.keras") 
