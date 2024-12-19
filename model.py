@@ -1,10 +1,11 @@
-from tensorflow.keras.applications import VGG16
+import tensorflow as tf
 
-# Load a pre-trained VGG16 model with ImageNet weights
-model = VGG16(weights='imagenet')
+# Load the smaller pre-trained model
+model = tf.keras.applications.MobileNetV2(
+    input_shape=(224, 224, 3),  # Same input shape as before
+    include_top=True,          # Include the classification head
+    weights="imagenet"         # Use pre-trained weights
+)
 
-# Save the model in both Keras and H5 formats
-model.save('vgg16_model.keras', save_format='keras')  # Native Keras format (recommended)
-model.save('vgg16_model.h5')  # H5 format for compatibility
-
-print("Models saved as 'vgg16_model.keras' and 'vgg16_model.h5'")
+# Save the model to a directory
+model.save("mobilenet_model")
